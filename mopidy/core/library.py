@@ -234,8 +234,9 @@ class LibraryController(object):
 
         # TODO: lookup(uris) to backend APIs
         for backend, backend_uris in self._get_backends_to_uris(uris).items():
-            for u in backend_uris:
-                futures[(backend, u)] = backend.library.lookup(u)
+            if backend_uris:
+                for u in backend_uris:
+                    futures[(backend, u)] = backend.library.lookup(u)
 
         for (backend, u), future in futures.items():
             with _backend_error_handling(backend):
@@ -359,6 +360,33 @@ class LibraryController(object):
                 logger.warning(
                     '%s does not implement library.search() with "exact" '
                     'support. Please upgrade it.', backend_name)
+
+        # split results into spotify and non-spotify
+        # if exists in non-spotify, delete from spotify
+        if len(results) == 2:
+            result_1 = results[0]
+            result_2 = results[1]
+
+            if result_1.uri[:7] == 'spotify':
+                spotify_result = result_1
+                local_result = result_2
+            elif result_2.uri[:7] == 'spotify':
+                spotify_result = result_2
+                local_result = result_1
+            else:
+                raise Exception
+
+            print("Spotify_result.tracks: {0}".format(spotify_result.tracks))
+            new_spotify_tracks = list(spotify_result.tracks)
+            for track in local_result.tracks:
+                for spotify_track in spotify_result.tracks:
+                    if track.name == spotify_track.name:
+                        print("Removing {0}".format(track.name))
+                        new_spotify_tracks.remove(spotify_track)
+
+            spotify_result = spotify_result.replace(tracks=tuple(new_spotify_tracks))
+
+            results = [spotify_result, local_result]
 
         return results
 
