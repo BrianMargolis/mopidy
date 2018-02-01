@@ -139,7 +139,13 @@ class LibraryController(object):
                    for b in self.backends.with_library.values()}
         for backend, future in futures.items():
             with _backend_error_handling(backend):
-                values = future.get()
+                uri_schemes = list(backend._actor.uri_schemes)
+                if uri_schemes[0] == 'spotifyweb':
+                    browse_result = self._browse("spotifyweb:sauce")
+                    values = {artist.name for artist in browse_result}
+                else:
+                    values = future.get()
+                print(values)
                 if values is not None:
                     validation.check_instances(values, compat.text_type)
                     result.update(values)
